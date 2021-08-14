@@ -79,14 +79,14 @@ void ui_textarea_add(char *baseTxt, char *param, size_t paramLen) {
     }
 }
 
-void ui_wifi_label_update(bool state){
+void ui_wifi_label_update(bool state, char *ssid){
     xSemaphoreTake(xGuiSemaphore, portMAX_DELAY);
     if (state == false) {
         lv_label_set_text(wifi_label, LV_SYMBOL_WIFI);
     } 
     else{
-        char buffer[25];
-        sprintf (buffer, "#0000ff %s #", LV_SYMBOL_WIFI);
+        char buffer[100];
+        sprintf (buffer, "#0000ff %s # %s", LV_SYMBOL_WIFI, ssid);
         lv_label_set_text(wifi_label, buffer);
     }
     xSemaphoreGive(xGuiSemaphore);
@@ -94,8 +94,9 @@ void ui_wifi_label_update(bool state){
 
 void ui_init() {
     xSemaphoreTake(xGuiSemaphore, portMAX_DELAY);
+
     wifi_label = lv_label_create(lv_scr_act(), NULL);
-    lv_obj_align(wifi_label,NULL,LV_ALIGN_IN_TOP_RIGHT, 0, 6);
+    lv_obj_align(wifi_label,NULL,LV_ALIGN_IN_TOP_LEFT, 10, 6);
     lv_label_set_text(wifi_label, LV_SYMBOL_WIFI);
     lv_label_set_recolor(wifi_label, true);
     
@@ -106,5 +107,6 @@ void ui_init() {
     lv_textarea_set_text_sel(out_txtarea, false);
     lv_textarea_set_cursor_hidden(out_txtarea, true);
     lv_textarea_set_text(out_txtarea, "Starting Cloud Connected Blinky\n");
+    
     xSemaphoreGive(xGuiSemaphore);
 }
