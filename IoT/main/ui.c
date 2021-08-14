@@ -47,7 +47,7 @@ static lv_obj_t *room_label;
 static lv_obj_t *date_label;
 static lv_obj_t *done_button;
 static lv_obj_t *done_button_label;
-
+bool done_button_clicked = false;
 
 static char *TAG = "UI";
 
@@ -55,10 +55,16 @@ static char *TAG = "UI";
 static void done_button_event_handler(lv_obj_t * obj, lv_event_t event)
 {
     if(event == LV_EVENT_CLICKED) {
-        printf("Clicked\n");
+        done_button_clicked = true;
+        ESP_LOGI(TAG, "Done button clicked");
     }
 }
 
+bool is_done_button_clicked() {
+    bool ret = done_button_clicked;
+    done_button_clicked = false;
+    return ret;
+}
 
 static void ui_textarea_prune(size_t new_text_length){
     const char * current_text = lv_textarea_get_text(out_txtarea);

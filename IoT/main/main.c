@@ -255,24 +255,26 @@ void aws_iot_task(void *param) {
 
         // END get sensor readings
 
-        ESP_LOGI(TAG, "*****************************************************************************************");
-        ESP_LOGI(TAG, "On Device: cleaningStatus %s", cleaningStatus);
+        if (is_done_button_clicked()) {
+            ESP_LOGI(TAG, "*****************************************************************************************");
+            ESP_LOGI(TAG, "On Device: cleaningStatus %s", cleaningStatus);
 
-        rc = aws_iot_shadow_init_json_document(JsonDocumentBuffer, sizeOfJsonDocumentBuffer);
-        if(SUCCESS == rc) {
-            rc = aws_iot_shadow_add_reported(JsonDocumentBuffer, sizeOfJsonDocumentBuffer, 1, &cleaningStatusActuator);
+            rc = aws_iot_shadow_init_json_document(JsonDocumentBuffer, sizeOfJsonDocumentBuffer);
             if(SUCCESS == rc) {
-                rc = aws_iot_finalize_json_document(JsonDocumentBuffer, sizeOfJsonDocumentBuffer);
+                rc = aws_iot_shadow_add_reported(JsonDocumentBuffer, sizeOfJsonDocumentBuffer, 1, &cleaningStatusActuator);
                 if(SUCCESS == rc) {
-                    ESP_LOGI(TAG, "Update Shadow: %s", JsonDocumentBuffer);
-                    rc = aws_iot_shadow_update(&iotCoreClient, client_id, JsonDocumentBuffer,
-                                               ShadowUpdateStatusCallback, NULL, 4, true);
-                    shadowUpdateInProgress = true;
+                    rc = aws_iot_finalize_json_document(JsonDocumentBuffer, sizeOfJsonDocumentBuffer);
+                    if(SUCCESS == rc) {
+                        ESP_LOGI(TAG, "Update Shadow: %s", JsonDocumentBuffer);
+                        rc = aws_iot_shadow_update(&iotCoreClient, client_id, JsonDocumentBuffer,
+                                                ShadowUpdateStatusCallback, NULL, 4, true);
+                        shadowUpdateInProgress = true;
+                    }
                 }
             }
+            ESP_LOGI(TAG, "*****************************************************************************************");
+            ESP_LOGI(TAG, "Stack remaining for task '%s' is %d bytes", pcTaskGetTaskName(NULL), uxTaskGetStackHighWaterMark(NULL));
         }
-        ESP_LOGI(TAG, "*****************************************************************************************");
-        ESP_LOGI(TAG, "Stack remaining for task '%s' is %d bytes", pcTaskGetTaskName(NULL), uxTaskGetStackHighWaterMark(NULL));
 
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
