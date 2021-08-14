@@ -53,18 +53,6 @@
 
 static const char *TAG = "MAIN";
 
-#define HEATING "HEATING"
-#define COOLING "COOLING"
-#define STANDBY "STANDBY"
-
-#define STARTING_ROOMTEMPERATURE 0.0f
-#define STARTING_SOUNDLEVEL 0x00
-#define STARTING_HVACSTATUS STANDBY
-#define STARTING_ROOMOCCUPANCY false
-
-// Number of slices to split the microphone sample into
-#define AUDIO_TIME_SLICES 60
-
 #define MAX_LENGTH_OF_UPDATE_JSON_BUFFER 200
 
 /* CA Root certificate */
@@ -90,7 +78,7 @@ void iot_subscribe_callback_handler(AWS_IoT_Client *pClient, char *topicName, ui
 
 void disconnect_callback_handler(AWS_IoT_Client *pClient, void *data) {
     ESP_LOGW(TAG, "MQTT Disconnect");
-    ui_textarea_add("Disconnected from AWS IoT Core...", NULL, 0);
+    ESP_LOGW(TAG, "Disconnected from AWS IoT Core...");
 
     IoT_Error_t rc = FAILURE;
 
@@ -131,21 +119,21 @@ void ShadowUpdateStatusCallback(const char *pThingName, ShadowActions_t action, 
     }
 }
 
-void hvac_Callback(const char *pJsonString, uint32_t JsonStringDataLen, jsonStruct_t *pContext) {
+void cleaningStatus_Callback(const char *pJsonString, uint32_t JsonStringDataLen, jsonStruct_t *pContext) {
     IOT_UNUSED(pJsonString);
     IOT_UNUSED(JsonStringDataLen);
 
     char * status = (char *) (pContext->pData);
 
     if(pContext != NULL) {
-        ESP_LOGI(TAG, "Delta - hvacStatus state changed to %s", status);
+        ESP_LOGI(TAG, "Delta - Cleaning Status state changed to %s", status);
     }
 
-    if(strcmp(status, HEATING) == 0) {
+    // if(strcmp(status, HEATING) == 0) {
         ESP_LOGI(TAG, "setting side LEDs to red");
         Core2ForAWS_Sk6812_SetSideColor(SK6812_SIDE_LEFT, 0xFF0000);
         Core2ForAWS_Sk6812_SetSideColor(SK6812_SIDE_RIGHT, 0xFF0000);
-        Core2ForAWS_Sk6812_Show();
+        Core2ForAWS_Sk6812_Show(); /*
     } else if(strcmp(status, COOLING) == 0) {
         ESP_LOGI(TAG, "setting side LEDs to blue");
         Core2ForAWS_Sk6812_SetSideColor(SK6812_SIDE_LEFT, 0x0000FF);
@@ -155,51 +143,10 @@ void hvac_Callback(const char *pJsonString, uint32_t JsonStringDataLen, jsonStru
         ESP_LOGI(TAG, "clearing side LEDs");
         Core2ForAWS_Sk6812_Clear();
         Core2ForAWS_Sk6812_Show();
-    }
+    } */
 }
 
-void occupancy_Callback(const char *pJsonString, uint32_t JsonStringDataLen, jsonStruct_t *pContext) {
-    IOT_UNUSED(pJsonString);
-    IOT_UNUSED(JsonStringDataLen);
-
-    if(pContext != NULL) {
-        ESP_LOGI(TAG, "Delta - roomOccupancy state changed to %d", *(bool *) (pContext->pData));
-    }
-}
-
-float temperature = STARTING_ROOMTEMPERATURE;
-uint8_t soundBuffer = STARTING_SOUNDLEVEL;
-uint8_t reportedSound = STARTING_SOUNDLEVEL;
-char hvacStatus[7] = STARTING_HVACSTATUS;
-bool roomOccupancy = STARTING_ROOMOCCUPANCY;
-
-// helper function for working with audio data
-long map(long x, long in_min, long in_max, long out_min, long out_max) {
-    long divisor = (in_max - in_min);
-    if(divisor == 0){
-        return -1; //AVR returns -1, SAM returns 0
-    }
-    return (x - in_min) * (out_max - out_min) / divisor + out_min;
-}
-
-void microphone_task(void *arg) {
-    static int8_t i2s_readraw_buff[1024];
-    size_t bytesread;
-    int16_t *buffptr;
-    double data = 0;
-
-    Microphone_Init();
-    uint8_t maxSound = 0x00;
-    uint8_t currentSound = 0x00;
-
-    for (;;) {
-        maxSound = 0x00;
-        // store max of sample in semaphore
-        xSemaphoreTake(xMaxNoiseSemaphore, portMAX_DELAY);
-        soundBuffer = maxSound;
-        xSemaphoreGive(xMaxNoiseSemaphore);
-    }
-}
+char cleaningStatus[16] = "HELLO";
 
 void aws_iot_task(void *param) {
     IoT_Error_t rc = FAILURE;
@@ -207,33 +154,12 @@ void aws_iot_task(void *param) {
     char JsonDocumentBuffer[MAX_LENGTH_OF_UPDATE_JSON_BUFFER];
     size_t sizeOfJsonDocumentBuffer = sizeof(JsonDocumentBuffer) / sizeof(JsonDocumentBuffer[0]);
 
-    jsonStruct_t temperatureHandler;
-    temperatureHandler.cb = NULL;
-    temperatureHandler.pKey = "temperature";
-    temperatureHandler.pData = &temperature;
-    temperatureHandler.type = SHADOW_JSON_FLOAT;
-    temperatureHandler.dataLength = sizeof(float);
-
-    jsonStruct_t soundHandler;
-    soundHandler.cb = NULL;
-    soundHandler.pKey = "sound";
-    soundHandler.pData = &reportedSound;
-    soundHandler.type = SHADOW_JSON_UINT8;
-    soundHandler.dataLength = sizeof(uint8_t);
-
-    jsonStruct_t hvacStatusActuator;
-    hvacStatusActuator.cb = hvac_Callback;
-    hvacStatusActuator.pKey = "hvacStatus";
-    hvacStatusActuator.pData = &hvacStatus;
-    hvacStatusActuator.type = SHADOW_JSON_STRING;
-    hvacStatusActuator.dataLength = strlen(hvacStatus)+1;
-
-    jsonStruct_t roomOccupancyActuator;
-    roomOccupancyActuator.cb = occupancy_Callback;
-    roomOccupancyActuator.pKey = "roomOccupancy";
-    roomOccupancyActuator.pData = &roomOccupancy;
-    roomOccupancyActuator.type = SHADOW_JSON_BOOL;
-    roomOccupancyActuator.dataLength = sizeof(bool);
+    jsonStruct_t cleaningStatusActuator;
+    cleaningStatusActuator.cb = cleaningStatus_Callback;
+    cleaningStatusActuator.pKey = "cleaningStatus";
+    cleaningStatusActuator.pData = &cleaningStatus;
+    cleaningStatusActuator.type = SHADOW_JSON_STRING;
+    cleaningStatusActuator.dataLength = strlen(cleaningStatus)+1;
 
     ESP_LOGI(TAG, "AWS IoT SDK Version %d.%d.%d-%s", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_TAG);
 
@@ -258,7 +184,7 @@ void aws_iot_task(void *param) {
         abort();
     }
 
-    ui_textarea_add("\n\nDevice client Id:\n>> %s <<\n", client_id, CLIENT_ID_LEN);
+    ESP_LOGI(TAG, "Device client Id: >> %s <<", client_id);
 
     /* Wait for WiFI to show as connected */
     xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
@@ -283,9 +209,7 @@ void aws_iot_task(void *param) {
         ESP_LOGE(TAG, "aws_iot_shadow_connect returned error %d, aborting...", rc);
         abort();
     }
-    ui_textarea_add("Connected to AWS IoT Device Shadow service", NULL, 0);
-
-    xTaskCreatePinnedToCore(&microphone_task, "microphone_task", 4096, NULL, 1, NULL, 1);
+    ESP_LOGI(TAG, "Connected to AWS IoT Device Shadow service");
 
     /*
      * Enable Auto Reconnect functionality. Minimum and Maximum time of Exponential backoff are set in aws_iot_config.h
@@ -298,17 +222,23 @@ void aws_iot_task(void *param) {
         abort();
     }
 
-    // register delta callback for roomOccupancy
-    rc = aws_iot_shadow_register_delta(&iotCoreClient, &roomOccupancyActuator);
+    // register delta callback for cleaningStatus
+    rc = aws_iot_shadow_register_delta(&iotCoreClient, &cleaningStatusActuator);
     if(SUCCESS != rc) {
         ESP_LOGE(TAG, "Shadow Register Delta Error");
     }
 
-    // register delta callback for hvacStatus
-    rc = aws_iot_shadow_register_delta(&iotCoreClient, &hvacStatusActuator);
-    if(SUCCESS != rc) {
-        ESP_LOGE(TAG, "Shadow Register Delta Error");
-    }
+    rtc_date_t date;
+    /*
+    date.year = 2021;
+    date.month = 8;
+    date.day = 9;
+
+    date.hour = 18;
+    date.minute = 10;
+    date.second = 0;  
+    BM8563_SetTime(&date);
+    */
 
     // loop and publish changes
     while(NETWORK_ATTEMPTING_RECONNECT == rc || NETWORK_RECONNECTED == rc || SUCCESS == rc) {
@@ -321,27 +251,17 @@ void aws_iot_task(void *param) {
         }
 
         // START get sensor readings
-        // sample temperature, convert to fahrenheit
-        MPU6886_GetTempData(&temperature);
-        temperature = (temperature * 1.8)  + 32 - 50;
-
-        // sample from soundBuffer (latest reading from microphone)
-        xSemaphoreTake(xMaxNoiseSemaphore, portMAX_DELAY);
-        reportedSound = soundBuffer;
-        xSemaphoreGive(xMaxNoiseSemaphore);
+        BM8563_GetTime(&date);
+        ui_date_label_update(date);
 
         // END get sensor readings
 
         ESP_LOGI(TAG, "*****************************************************************************************");
-        ESP_LOGI(TAG, "On Device: roomOccupancy %s", roomOccupancy ? "true" : "false");
-        ESP_LOGI(TAG, "On Device: hvacStatus %s", hvacStatus);
-        ESP_LOGI(TAG, "On Device: temperature %f", temperature);
-        ESP_LOGI(TAG, "On Device: sound %d", reportedSound);
+        ESP_LOGI(TAG, "On Device: cleaningStatus %s", cleaningStatus);
 
         rc = aws_iot_shadow_init_json_document(JsonDocumentBuffer, sizeOfJsonDocumentBuffer);
         if(SUCCESS == rc) {
-            rc = aws_iot_shadow_add_reported(JsonDocumentBuffer, sizeOfJsonDocumentBuffer, 4, &temperatureHandler,
-                                             &soundHandler, &roomOccupancyActuator, &hvacStatusActuator);
+            rc = aws_iot_shadow_add_reported(JsonDocumentBuffer, sizeOfJsonDocumentBuffer, 1, &cleaningStatusActuator);
             if(SUCCESS == rc) {
                 rc = aws_iot_finalize_json_document(JsonDocumentBuffer, sizeOfJsonDocumentBuffer);
                 if(SUCCESS == rc) {

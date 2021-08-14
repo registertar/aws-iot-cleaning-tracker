@@ -43,6 +43,7 @@
 
 static lv_obj_t *out_txtarea;
 static lv_obj_t *wifi_label;
+static lv_obj_t *date_label;
 
 static char *TAG = "UI";
 
@@ -92,6 +93,15 @@ void ui_wifi_label_update(bool state, char *ssid){
     xSemaphoreGive(xGuiSemaphore);
 }
 
+void ui_date_label_update(rtc_date_t date){
+    xSemaphoreTake(xGuiSemaphore, portMAX_DELAY);
+    char label_datetext[200];
+    sprintf(label_datetext, "%d-%02d-%02d %02d:%02d:%02d",
+                date.year, date.month, date.day, date.hour, date.minute, date.second);
+    lv_label_set_text(date_label, label_datetext);
+    xSemaphoreGive(xGuiSemaphore);
+}
+
 void ui_init() {
     xSemaphoreTake(xGuiSemaphore, portMAX_DELAY);
 
@@ -99,6 +109,11 @@ void ui_init() {
     lv_obj_align(wifi_label,NULL,LV_ALIGN_IN_TOP_LEFT, 10, 6);
     lv_label_set_text(wifi_label, LV_SYMBOL_WIFI);
     lv_label_set_recolor(wifi_label, true);
+
+    date_label = lv_label_create(lv_scr_act(), NULL);
+    lv_obj_align(date_label,NULL,LV_ALIGN_IN_TOP_RIGHT, -150, 6);
+    lv_label_set_text(date_label, "...");
+    lv_label_set_recolor(date_label, true);
     
     out_txtarea = lv_textarea_create(lv_scr_act(), NULL);
     lv_obj_set_size(out_txtarea, 300, 180);
