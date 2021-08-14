@@ -49,7 +49,6 @@
 #include "core2forAWS.h"
 
 #include "wifi.h"
-#include "fft.h"
 #include "ui.h"
 
 static const char *TAG = "MAIN";
@@ -195,23 +194,6 @@ void microphone_task(void *arg) {
 
     for (;;) {
         maxSound = 0x00;
-        fft_config_t *real_fft_plan = fft_init(512, FFT_REAL, FFT_FORWARD, NULL, NULL);
-        i2s_read(I2S_NUM_0, (char *)i2s_readraw_buff, 1024, &bytesread, pdMS_TO_TICKS(100));
-        buffptr = (int16_t *)i2s_readraw_buff;
-        for (uint16_t count_n = 0; count_n < real_fft_plan->size; count_n++) {
-            real_fft_plan->input[count_n] = (float)map(buffptr[count_n], INT16_MIN, INT16_MAX, -1000, 1000);
-        }
-        fft_execute(real_fft_plan);
-
-        for (uint16_t count_n = 1; count_n < AUDIO_TIME_SLICES; count_n++) {
-            data = sqrt(real_fft_plan->output[2 * count_n] * real_fft_plan->output[2 * count_n] + real_fft_plan->output[2 * count_n + 1] * real_fft_plan->output[2 * count_n + 1]);
-            currentSound = map(data, 0, 2000, 0, 256);
-            if(currentSound > maxSound) {
-                maxSound = currentSound;
-            }
-        }
-        fft_destroy(real_fft_plan);
-
         // store max of sample in semaphore
         xSemaphoreTake(xMaxNoiseSemaphore, portMAX_DELAY);
         soundBuffer = maxSound;
