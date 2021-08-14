@@ -65,11 +65,6 @@ char HostAddress[255] = AWS_IOT_MQTT_HOST;
 /* Default MQTT port is pulled from the aws_iot_config.h */
 uint32_t port = AWS_IOT_MQTT_PORT;
 
-/*
-Semaphore for sound levels
-*/
-SemaphoreHandle_t xMaxNoiseSemaphore;
-
 void iot_subscribe_callback_handler(AWS_IoT_Client *pClient, char *topicName, uint16_t topicNameLen,
                                     IoT_Publish_Message_Params *params, void *pData) {
     ESP_LOGI(TAG, "Subscribe callback");
@@ -146,7 +141,7 @@ void cleaningStatus_Callback(const char *pJsonString, uint32_t JsonStringDataLen
     } */
 }
 
-char cleaningStatus[16] = "HELLO";
+char cleaningStatus[16] = "CLEANED";
 
 void aws_iot_task(void *param) {
     IoT_Error_t rc = FAILURE;
@@ -298,8 +293,6 @@ void app_main()
     Core2ForAWS_Init();
     Core2ForAWS_Display_SetBrightness(80);
     Core2ForAWS_LED_Enable(1);
-
-    xMaxNoiseSemaphore = xSemaphoreCreateMutex();
 
     ui_init();
     initialise_wifi();
