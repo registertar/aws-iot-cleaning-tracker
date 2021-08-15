@@ -209,13 +209,16 @@ void aws_iot_task(void *param) {
     scp.pMqttClientId = client_id;
     scp.mqttClientIdLen = CLIENT_ID_LEN;
 
-    ESP_LOGI(TAG, "Shadow Connect");
-    rc = aws_iot_shadow_connect(&iotCoreClient, &scp);
-    if(SUCCESS != rc) {
-        ESP_LOGE(TAG, "aws_iot_shadow_connect returned error %d, aborting...", rc);
-        abort();
+    while(true) {
+        ESP_LOGI(TAG, "Shadow Connect");
+        rc = aws_iot_shadow_connect(&iotCoreClient, &scp);
+        if(SUCCESS != rc) {
+            ESP_LOGE(TAG, "aws_iot_shadow_connect returned error %d, retrying...", rc);
+        } else {
+            ESP_LOGI(TAG, "Connected to AWS IoT Device Shadow service");
+            break;
+        }
     }
-    ESP_LOGI(TAG, "Connected to AWS IoT Device Shadow service");
 
     /*
      * Enable Auto Reconnect functionality. Minimum and Maximum time of Exponential backoff are set in aws_iot_config.h
