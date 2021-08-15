@@ -123,27 +123,11 @@ void cleaningStatus_Callback(const char *pJsonString, uint32_t JsonStringDataLen
     if(pContext != NULL) {
         ESP_LOGI(TAG, "Delta - Cleaning Status state changed to %s", status);
     }
-
-    // if(strcmp(status, HEATING) == 0) {
-        ESP_LOGI(TAG, "setting side LEDs to red");
-        Core2ForAWS_Sk6812_SetSideColor(SK6812_SIDE_LEFT, 0xFF0000);
-        Core2ForAWS_Sk6812_SetSideColor(SK6812_SIDE_RIGHT, 0xFF0000);
-        Core2ForAWS_Sk6812_Show(); /*
-    } else if(strcmp(status, COOLING) == 0) {
-        ESP_LOGI(TAG, "setting side LEDs to blue");
-        Core2ForAWS_Sk6812_SetSideColor(SK6812_SIDE_LEFT, 0x0000FF);
-        Core2ForAWS_Sk6812_SetSideColor(SK6812_SIDE_RIGHT, 0x0000FF);
-        Core2ForAWS_Sk6812_Show();
-    } else {
-        ESP_LOGI(TAG, "clearing side LEDs");
-        Core2ForAWS_Sk6812_Clear();
-        Core2ForAWS_Sk6812_Show();
-    } */
 }
 
-char cleaningStatus[32] = "";
-char clientidStatus[32] = "";
 char timestampStatus[32] = "";
+char clientidStatus[32] = "";
+char cleaningStatus[32] = "";
 
 void aws_iot_task(void *param) {
     IoT_Error_t rc = FAILURE;
@@ -197,6 +181,7 @@ void aws_iot_task(void *param) {
 
     ESP_LOGI(TAG, "Device client Id: >> %s <<", client_id);
 
+    rtc_date_t dueDate;
     rtc_date_t date;
     /*
     date.year = 2021;
@@ -261,6 +246,10 @@ void aws_iot_task(void *param) {
         ESP_LOGE(TAG, "Shadow Register Delta Error");
     }
 
+    BM8563_GetTime(&dueDate);
+    // dueDate.hour+=1;
+dueDate.minute+=1;
+
     // loop and publish changes
     while(NETWORK_ATTEMPTING_RECONNECT == rc || NETWORK_RECONNECTED == rc || SUCCESS == rc) {
         rc = aws_iot_shadow_yield(&iotCoreClient, 200);
@@ -274,13 +263,29 @@ void aws_iot_task(void *param) {
         // START get sensor readings
         BM8563_GetTime(&date);
         ui_date_label_update(date);
-        sprintf(timestampStatus, "%d-%02d-%02d %02d:%02d:%02d", date.year, date.month, date.day, date.hour, date.minute, date.second);
-        sprintf(clientidStatus, "%s", client_id);
-        sprintf(cleaningStatus, "CLEANED");
-
+        // int timediff = (dueDate.hour * 60 + dueDate.minute) - (date.hour * 60 + date.minute);
+int timediff = (dueDate.minute * 60 + dueDate.second) - (date.minute * 60 + date.second);
+        if (timediff < 0)
+            timediff = 0;
+        ESP_LOGI(TAG, "timediff: %d", timediff);
+        if (timediff == 0)
+            ui_set_led_color(0xFF0000);
+        else if (timediff < 15)
+            ui_set_led_color(0xFFFF00);
+        else
+            ui_set_led_color(0x00FF00);
+        ui_set_due_bar(timediff * 100 / 60);
         // END get sensor readings
 
         if (is_done_button_clicked()) { // send message only if Cleaned
+
+            BM8563_GetTime(&dueDate);
+            // dueDate.hour+=1;
+dueDate.minute+=1;
+
+            sprintf(timestampStatus, "%d-%02d-%02d %02d:%02d:%02d", date.year, date.month, date.day, date.hour, date.minute, date.second);
+            sprintf(clientidStatus, "%s", client_id);
+            sprintf(cleaningStatus, "CLEANED");
             ESP_LOGI(TAG, "*****************************************************************************************");
             ESP_LOGI(TAG, "On Device: timestampStatus %s", timestampStatus);
             ESP_LOGI(TAG, "On Device: clientidStatus %s", clientidStatus);
