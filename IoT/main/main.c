@@ -141,13 +141,29 @@ void cleaningStatus_Callback(const char *pJsonString, uint32_t JsonStringDataLen
     } */
 }
 
-char cleaningStatus[16] = "CLEANED";
+char cleaningStatus[32] = "";
+char clientidStatus[32] = "";
+char timestampStatus[32] = "";
 
 void aws_iot_task(void *param) {
     IoT_Error_t rc = FAILURE;
 
     char JsonDocumentBuffer[MAX_LENGTH_OF_UPDATE_JSON_BUFFER];
     size_t sizeOfJsonDocumentBuffer = sizeof(JsonDocumentBuffer) / sizeof(JsonDocumentBuffer[0]);
+
+    jsonStruct_t timestampStatusActuator;
+    timestampStatusActuator.cb = NULL;
+    timestampStatusActuator.pKey = "timestampStatus";
+    timestampStatusActuator.pData = &timestampStatus;
+    timestampStatusActuator.type = SHADOW_JSON_STRING;
+    timestampStatusActuator.dataLength = strlen(timestampStatus)+1;
+
+    jsonStruct_t clientidStatusActuator;
+    clientidStatusActuator.cb = NULL;
+    clientidStatusActuator.pKey = "clientidStatus";
+    clientidStatusActuator.pData = &clientidStatus;
+    clientidStatusActuator.type = SHADOW_JSON_STRING;
+    clientidStatusActuator.dataLength = strlen(clientidStatus)+1;
 
     jsonStruct_t cleaningStatusActuator;
     cleaningStatusActuator.cb = cleaningStatus_Callback;
@@ -231,7 +247,15 @@ void aws_iot_task(void *param) {
         abort();
     }
 
-    // register delta callback for cleaningStatus
+    // register delta callbacks
+    rc = aws_iot_shadow_register_delta(&iotCoreClient, &timestampStatusActuator);
+    if(SUCCESS != rc) {
+        ESP_LOGE(TAG, "Shadow Register Delta Error");
+    }
+    rc = aws_iot_shadow_register_delta(&iotCoreClient, &clientidStatusActuator);
+    if(SUCCESS != rc) {
+        ESP_LOGE(TAG, "Shadow Register Delta Error");
+    }
     rc = aws_iot_shadow_register_delta(&iotCoreClient, &cleaningStatusActuator);
     if(SUCCESS != rc) {
         ESP_LOGE(TAG, "Shadow Register Delta Error");
@@ -250,16 +274,24 @@ void aws_iot_task(void *param) {
         // START get sensor readings
         BM8563_GetTime(&date);
         ui_date_label_update(date);
+        sprintf(timestampStatus, "%d-%02d-%02d %02d:%02d:%02d", date.year, date.month, date.day, date.hour, date.minute, date.second);
+        sprintf(clientidStatus, "%s", client_id);
+        sprintf(cleaningStatus, "CLEANED");
 
         // END get sensor readings
 
-        if (is_done_button_clicked()) {
+        if (is_done_button_clicked()) { // send message only if Cleaned
             ESP_LOGI(TAG, "*****************************************************************************************");
+            ESP_LOGI(TAG, "On Device: timestampStatus %s", timestampStatus);
+            ESP_LOGI(TAG, "On Device: clientidStatus %s", clientidStatus);
             ESP_LOGI(TAG, "On Device: cleaningStatus %s", cleaningStatus);
 
             rc = aws_iot_shadow_init_json_document(JsonDocumentBuffer, sizeOfJsonDocumentBuffer);
             if(SUCCESS == rc) {
-                rc = aws_iot_shadow_add_reported(JsonDocumentBuffer, sizeOfJsonDocumentBuffer, 1, &cleaningStatusActuator);
+                rc = aws_iot_shadow_add_reported(JsonDocumentBuffer, sizeOfJsonDocumentBuffer, 3,
+                    &timestampStatusActuator,
+                    &clientidStatusActuator,
+                    &cleaningStatusActuator);
                 if(SUCCESS == rc) {
                     rc = aws_iot_finalize_json_document(JsonDocumentBuffer, sizeOfJsonDocumentBuffer);
                     if(SUCCESS == rc) {
