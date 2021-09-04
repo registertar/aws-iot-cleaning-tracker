@@ -47,7 +47,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         ESP_LOGI(TAG, "Wi-Fi connected. Device IP address: " IPSTR, IP2STR(&event->ip_info.ip));
         xEventGroupClearBits(wifi_event_group, DISCONNECTED_BIT);
         xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
-        ui_wifi_label_update(true, CONFIG_WIFI_SSID);
+        ui_wifi_label_update(true, CONFIG_WIFI_SSID);   // setting wifi ssid as well if wifi is connected
     }
 }
 

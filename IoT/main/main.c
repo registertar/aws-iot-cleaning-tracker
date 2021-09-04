@@ -153,8 +153,8 @@ void aws_iot_task(void *param) {
 
     ESP_LOGI(TAG, "Device client Id: >> %s <<", client_id);
 
-    rtc_date_t dueDate;
-    rtc_date_t date;
+    rtc_date_t dueDate; // stores cleaning due date time
+    rtc_date_t date;    // stores current date time
     /*
     date.year = 2021;
     date.month = 8;
@@ -162,10 +162,10 @@ void aws_iot_task(void *param) {
     date.hour = 18;
     date.minute = 39;
     date.second = 0;  
-    BM8563_SetTime(&date);
+    BM8563_SetTime(&date);  // this code can be used to set the current date and time in the device for the first time
     */
 
-    /* Wait for WiFI to show as connected */
+    // Wait for WiFI to show as connected
     xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
                         false, true, portMAX_DELAY);
 
@@ -182,6 +182,7 @@ void aws_iot_task(void *param) {
     scp.pMqttClientId = client_id;
     scp.mqttClientIdLen = CLIENT_ID_LEN;
 
+    // Connect to shadow in infinite loop until connected successfully
     while(true) {
         ESP_LOGI(TAG, "Shadow Connect");
         rc = aws_iot_shadow_connect(&iotCoreClient, &scp);
@@ -189,7 +190,7 @@ void aws_iot_task(void *param) {
             ESP_LOGE(TAG, "aws_iot_shadow_connect returned error %d, retrying...", rc);
         } else {
             ESP_LOGI(TAG, "Connected to AWS IoT Device Shadow service");
-            break;
+            break;  // exit from the loop
         }
     }
 
@@ -218,9 +219,13 @@ void aws_iot_task(void *param) {
         ESP_LOGE(TAG, "Shadow Register Delta Error");
     }
 
+    //
+    // Business logic starts here
+    //
+
+    // initialize cleaning due date to current time + 1 hour
     BM8563_GetTime(&dueDate);
     dueDate.hour+=1;
-    // dueDate.minute+=1; // debug
 
     // loop and publish changes
     while(NETWORK_ATTEMPTING_RECONNECT == rc || NETWORK_RECONNECTED == rc || SUCCESS == rc) {
@@ -232,36 +237,45 @@ void aws_iot_task(void *param) {
             continue;
         }
 
-        // START get sensor readings
-        BM8563_GetTime(&date);
-        ui_date_label_update(date);
-        int timediff = (dueDate.hour * 60 * 60 + dueDate.minute * 60 + dueDate.second) - (date.hour * 60 * 60 + date.minute * 60 + date.second);
+        // START get sensor readings + update UI
+
+        BM8563_GetTime(&date);          // get current date time
+        ui_date_label_update(date);     // show time on UI
+
+        int timediff = (dueDate.hour * 60 + dueDate.minute) - (date.hour * 60 + date.minute);   // minutes between now and cleaning due time
+        ESP_LOGI(TAG, "timediff: %d", timediff);
+        if (timediff < 0)
+            ui_set_led_color(0xFF0000); // set LED strips to RED if no time left
+        else if (timediff < 15)
+            ui_set_led_color(0xFFFF00); // set LED strips to YELLOW if 15 or less mins left (warning)
+        else
+            ui_set_led_color(0x00FF00); // set LED strips to GREEN otherwise (ok)
+
         if (timediff < 0)
             timediff = 0;
-        ESP_LOGI(TAG, "timediff: %d", timediff);
-        if (timediff == 0)
-            ui_set_led_color(0xFF0000);
-        else if (timediff < 15)
-            ui_set_led_color(0xFFFF00);
-        else
-            ui_set_led_color(0x00FF00);
-        ui_set_due_bar(timediff * 100 / 60);
+        ui_set_due_bar(timediff * 100 / 60);    // show remaining time on the progressbar as well
+
         // END get sensor readings
 
-        if (is_done_button_clicked()) { // send message only if Cleaned
+
+        // if room is cleaned
+        if (is_cleaned_button_clicked()) { // send message only if Cleaned
 
             BM8563_GetTime(&dueDate);
-            dueDate.hour+=1;
-            // dueDate.minute+=1; // debug
+            dueDate.hour+=1;    // update cleaning due date to current time + 1 hour
 
-            sprintf(timestampStatus, "%d-%02d-%02d %02d:%02d:%02d", date.year, date.month, date.day, date.hour, date.minute, date.second);
-            sprintf(clientidStatus, "%s", client_id);
-            sprintf(cleaningStatus, "CLEANED");
+            // set values for shadow document
+            sprintf(timestampStatus, "%d-%02d-%02d %02d:%02d:%02d", date.year, date.month, date.day, date.hour, date.minute, date.second);  // date time stamp
+            sprintf(clientidStatus, "%s", client_id);   // IoT id
+            sprintf(cleaningStatus, "CLEANED");         // Cleaning status
+
+            // log
             ESP_LOGI(TAG, "*****************************************************************************************");
             ESP_LOGI(TAG, "On Device: timestampStatus %s", timestampStatus);
             ESP_LOGI(TAG, "On Device: clientidStatus %s", clientidStatus);
             ESP_LOGI(TAG, "On Device: cleaningStatus %s", cleaningStatus);
 
+            // compose and update shadow document with: timestamp + clientid + cleaningstatus
             rc = aws_iot_shadow_init_json_document(JsonDocumentBuffer, sizeOfJsonDocumentBuffer);
             if(SUCCESS == rc) {
                 rc = aws_iot_shadow_add_reported(JsonDocumentBuffer, sizeOfJsonDocumentBuffer, 3,
@@ -282,7 +296,7 @@ void aws_iot_task(void *param) {
             ESP_LOGI(TAG, "Stack remaining for task '%s' is %d bytes", pcTaskGetTaskName(NULL), uxTaskGetStackHighWaterMark(NULL));
         }
 
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(1000));    // wait 1 sec, then loop
     }
 
     if(SUCCESS != rc) {
