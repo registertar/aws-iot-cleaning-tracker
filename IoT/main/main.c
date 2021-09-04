@@ -1,31 +1,3 @@
-/*
- * AWS IoT EduKit - Core2 for AWS IoT EduKit
- * Smart Thermostat v1.2.0
- * main.c
- * 
- * Copyright 2010-2015 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- * Additions Copyright 2016 Espressif Systems (Shanghai) PTE LTD
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- *  http://aws.amazon.com/apache2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
- */
-/**
- * @file main.c
- * @brief simple MQTT publish, subscribe, and device shadows for use with AWS IoT EduKit reference hardware.
- *
- * This example takes the parameters from the build configuration and establishes a connection to AWS IoT Core over MQTT.
- *
- * Some configuration is required. Visit https://edukit.workshop.aws
- *
- */
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -247,8 +219,8 @@ void aws_iot_task(void *param) {
     }
 
     BM8563_GetTime(&dueDate);
-    // dueDate.hour+=1;
-dueDate.minute+=1;
+    dueDate.hour+=1;
+    // dueDate.minute+=1; // debug
 
     // loop and publish changes
     while(NETWORK_ATTEMPTING_RECONNECT == rc || NETWORK_RECONNECTED == rc || SUCCESS == rc) {
@@ -263,8 +235,7 @@ dueDate.minute+=1;
         // START get sensor readings
         BM8563_GetTime(&date);
         ui_date_label_update(date);
-        // int timediff = (dueDate.hour * 60 + dueDate.minute) - (date.hour * 60 + date.minute);
-int timediff = (dueDate.minute * 60 + dueDate.second) - (date.minute * 60 + date.second);
+        int timediff = (dueDate.hour * 60 * 60 + dueDate.minute * 60 + dueDate.second) - (date.hour * 60 * 60 + date.minute * 60 + date.second);
         if (timediff < 0)
             timediff = 0;
         ESP_LOGI(TAG, "timediff: %d", timediff);
@@ -280,8 +251,8 @@ int timediff = (dueDate.minute * 60 + dueDate.second) - (date.minute * 60 + date
         if (is_done_button_clicked()) { // send message only if Cleaned
 
             BM8563_GetTime(&dueDate);
-            // dueDate.hour+=1;
-dueDate.minute+=1;
+            dueDate.hour+=1;
+            // dueDate.minute+=1; // debug
 
             sprintf(timestampStatus, "%d-%02d-%02d %02d:%02d:%02d", date.year, date.month, date.day, date.hour, date.minute, date.second);
             sprintf(clientidStatus, "%s", client_id);
