@@ -43,9 +43,22 @@
 
 static lv_obj_t *out_txtarea;
 static lv_obj_t *wifi_label;
+static lv_obj_t *room_label;
 static lv_obj_t *date_label;
+static lv_obj_t *done_button;
+static lv_obj_t *done_button_label;
+
 
 static char *TAG = "UI";
+
+
+static void done_button_event_handler(lv_obj_t * obj, lv_event_t event)
+{
+    if(event == LV_EVENT_CLICKED) {
+        printf("Clicked\n");
+    }
+}
+
 
 static void ui_textarea_prune(size_t new_text_length){
     const char * current_text = lv_textarea_get_text(out_txtarea);
@@ -96,8 +109,7 @@ void ui_wifi_label_update(bool state, char *ssid){
 void ui_date_label_update(rtc_date_t date){
     xSemaphoreTake(xGuiSemaphore, portMAX_DELAY);
     char label_datetext[200];
-    sprintf(label_datetext, "%d-%02d-%02d %02d:%02d:%02d",
-                date.year, date.month, date.day, date.hour, date.minute, date.second);
+    sprintf(label_datetext, "%02d:%02d", date.hour, date.minute);
     lv_label_set_text(date_label, label_datetext);
     xSemaphoreGive(xGuiSemaphore);
 }
@@ -105,15 +117,41 @@ void ui_date_label_update(rtc_date_t date){
 void ui_init() {
     xSemaphoreTake(xGuiSemaphore, portMAX_DELAY);
 
+    static lv_style_t title_style;
+    lv_style_init(&title_style);
+    lv_style_set_text_font(&title_style, LV_STATE_DEFAULT, LV_THEME_DEFAULT_FONT_TITLE);
+    lv_style_set_text_color(&title_style, LV_STATE_DEFAULT, LV_COLOR_BLACK);
+
+    static lv_style_t subtitle_style;
+    lv_style_init(&subtitle_style);
+    lv_style_set_text_font(&subtitle_style, LV_STATE_DEFAULT, LV_THEME_DEFAULT_FONT_SUBTITLE);
+    lv_style_set_text_color(&subtitle_style, LV_STATE_DEFAULT, LV_COLOR_BLACK);
+
     wifi_label = lv_label_create(lv_scr_act(), NULL);
     lv_obj_align(wifi_label,NULL,LV_ALIGN_IN_TOP_LEFT, 10, 6);
     lv_label_set_text(wifi_label, LV_SYMBOL_WIFI);
     lv_label_set_recolor(wifi_label, true);
 
+    room_label = lv_label_create(lv_scr_act(), NULL);
+    lv_obj_align(room_label,NULL,LV_ALIGN_IN_TOP_RIGHT, -150, 6);
+    lv_label_set_text(room_label, "Cafeteria");
+    lv_label_set_recolor(room_label, true);
+
     date_label = lv_label_create(lv_scr_act(), NULL);
-    lv_obj_align(date_label,NULL,LV_ALIGN_IN_TOP_RIGHT, -150, 6);
-    lv_label_set_text(date_label, "...");
+    lv_obj_add_style(date_label, LV_OBJ_PART_MAIN, &title_style);
+    lv_label_set_text(date_label, "00:00");
+    lv_obj_align(date_label,NULL,LV_ALIGN_IN_TOP_MID, 0, 60);
+    lv_label_set_align(date_label, LV_LABEL_ALIGN_CENTER);
     lv_label_set_recolor(date_label, true);
+    
+    done_button = lv_btn_create(lv_scr_act(), NULL);
+    lv_obj_set_event_cb(done_button, done_button_event_handler);
+    lv_obj_set_width(done_button, 200);
+    lv_obj_align(done_button, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, -20);
+
+    done_button_label = lv_label_create(done_button, NULL);
+    lv_obj_add_style(done_button_label, LV_OBJ_PART_MAIN, &subtitle_style);
+    lv_label_set_text(done_button_label, "Cleaned");
     
     out_txtarea = lv_textarea_create(lv_scr_act(), NULL);
     lv_obj_set_size(out_txtarea, 300, 180);
@@ -121,7 +159,8 @@ void ui_init() {
     lv_textarea_set_max_length(out_txtarea, MAX_TEXTAREA_LENGTH);
     lv_textarea_set_text_sel(out_txtarea, false);
     lv_textarea_set_cursor_hidden(out_txtarea, true);
-    lv_textarea_set_text(out_txtarea, "Starting Cloud Connected Blinky\n");
+    lv_textarea_set_text(out_txtarea, "Starting CleaningTracker\n");
+    lv_obj_set_hidden(out_txtarea, true);
     
     xSemaphoreGive(xGuiSemaphore);
 }

@@ -186,6 +186,17 @@ void aws_iot_task(void *param) {
 
     ESP_LOGI(TAG, "Device client Id: >> %s <<", client_id);
 
+    rtc_date_t date;
+    /*
+    date.year = 2021;
+    date.month = 8;
+    date.day = 14;
+    date.hour = 18;
+    date.minute = 39;
+    date.second = 0;  
+    BM8563_SetTime(&date);
+    */
+
     /* Wait for WiFI to show as connected */
     xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
                         false, true, portMAX_DELAY);
@@ -227,18 +238,6 @@ void aws_iot_task(void *param) {
     if(SUCCESS != rc) {
         ESP_LOGE(TAG, "Shadow Register Delta Error");
     }
-
-    rtc_date_t date;
-    /*
-    date.year = 2021;
-    date.month = 8;
-    date.day = 9;
-
-    date.hour = 18;
-    date.minute = 10;
-    date.second = 0;  
-    BM8563_SetTime(&date);
-    */
 
     // loop and publish changes
     while(NETWORK_ATTEMPTING_RECONNECT == rc || NETWORK_RECONNECTED == rc || SUCCESS == rc) {
