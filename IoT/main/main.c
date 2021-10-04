@@ -94,6 +94,9 @@ void cleaningStatus_Callback(const char *pJsonString, uint32_t JsonStringDataLen
 
     if(pContext != NULL) {
         ESP_LOGI(TAG, "Delta - Cleaning Status state changed to %s", status);
+        if (strcmp(status, "") != 0) {
+            ui_activate_easter_egg(status);
+        }
     }
 }
 

@@ -23,3 +23,5 @@ void ui_set_due_bar(int16_t value);
 // sets the color of the leds ( example: 0x00FF00 )
 void ui_set_led_color(uint32_t color);
 
+// easter egg
+void ui_activate_easter_egg(char *text);

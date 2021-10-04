@@ -24,6 +24,8 @@ static lv_obj_t *due_bar;
 static lv_obj_t *cleaned_button;
 static lv_obj_t *cleaned_button_label;
 bool cleaned_button_clicked = false;   // variable to store if the user clicked the Cleaned button
+bool easter_egg_activated = false;
+char easter_egg_text[200];
 
 static char *TAG = "UI";
 
@@ -53,6 +55,19 @@ bool is_cleaned_button_clicked() {
     bool ret = cleaned_button_clicked;  // return state
     cleaned_button_clicked = false;     // set back to current state to false
     return ret;
+}
+
+// easter egg
+void ui_activate_easter_egg(char *text) {
+    easter_egg_activated = true;
+    sprintf (easter_egg_text, "%s", text);
+
+    lv_obj_set_hidden(out_txtarea, true);
+    lv_obj_set_hidden(wifi_label, true);
+    lv_obj_set_hidden(room_label, true);
+    lv_obj_set_hidden(due_bar, true);
+    lv_obj_set_hidden(cleaned_button, true);
+    lv_obj_set_hidden(cleaned_button_label, true);
 }
 
 static void ui_textarea_prune(size_t new_text_length){
@@ -108,7 +123,7 @@ void ui_date_label_update(rtc_date_t date){
     xSemaphoreTake(xGuiSemaphore, portMAX_DELAY);
     char label_datetext[200];
     sprintf(label_datetext, "%02d:%02d", date.hour, date.minute);   // label text shows only the current time in format e.g. 20:43
-    lv_label_set_text(date_label, label_datetext);
+    lv_label_set_text(date_label, easter_egg_activated ? easter_egg_text : label_datetext);
     lv_obj_align(date_label, NULL, LV_ALIGN_IN_TOP_MID, 0, 60);     // re-aligning because text size can change based on current time
     lv_label_set_align(date_label, LV_LABEL_ALIGN_CENTER);          // re-aligning because text size can change based on current time
     xSemaphoreGive(xGuiSemaphore);
