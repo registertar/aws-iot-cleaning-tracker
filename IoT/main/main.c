@@ -112,21 +112,21 @@ void aws_iot_task(void *param) {
     timestampStatusActuator.pKey = "timestampStatus";
     timestampStatusActuator.pData = &timestampStatus;
     timestampStatusActuator.type = SHADOW_JSON_STRING;
-    timestampStatusActuator.dataLength = strlen(timestampStatus)+1;
+    timestampStatusActuator.dataLength = 32;
 
     jsonStruct_t clientidStatusActuator;
     clientidStatusActuator.cb = NULL;
     clientidStatusActuator.pKey = "clientidStatus";
     clientidStatusActuator.pData = &clientidStatus;
     clientidStatusActuator.type = SHADOW_JSON_STRING;
-    clientidStatusActuator.dataLength = strlen(clientidStatus)+1;
+    clientidStatusActuator.dataLength = 32;
 
     jsonStruct_t cleaningStatusActuator;
     cleaningStatusActuator.cb = cleaningStatus_Callback;
     cleaningStatusActuator.pKey = "cleaningStatus";
     cleaningStatusActuator.pData = &cleaningStatus;
     cleaningStatusActuator.type = SHADOW_JSON_STRING;
-    cleaningStatusActuator.dataLength = strlen(cleaningStatus)+1;
+    cleaningStatusActuator.dataLength = 32;
 
     ESP_LOGI(TAG, "AWS IoT SDK Version %d.%d.%d-%s", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_TAG);
 
