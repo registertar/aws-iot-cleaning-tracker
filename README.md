@@ -8,4 +8,4 @@ Tech stack:
 - AWS Lambda function
 - AWS Honeycode
 
-For detailed documentation please visit this link: http://hackster.io/project/TBD
+For detailed documentation please visit this link: https://www.hackster.io/registertar/iot-office-room-cleaning-tracker-system-262a06
